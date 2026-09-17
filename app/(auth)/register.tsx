@@ -1,16 +1,18 @@
 import { Link, router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/common/Button';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Input } from '@/components/common/Input';
-import { Loading } from '@/components/common/Loading';
+import { COLORS } from '@/constants/colors';
 import { registerUser } from '@/services/authService';
 import { validateConfirmPassword, validateEmail, validatePassword, validatePhone, validateRequired } from '@/utils/validation';
 
 export default function RegisterScreen() {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
+  const [touched, setTouched] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -27,6 +29,7 @@ export default function RegisterScreen() {
   };
 
   const handleSubmit = async () => {
+    setTouched(true);
     const hasErrors = Object.values(validationErrors).some(Boolean);
     if (hasErrors) {
       setError('Please correct the highlighted fields and try again.');
@@ -52,35 +55,43 @@ export default function RegisterScreen() {
     }
   };
 
-  if (loading) return <Loading label="Creating account" />;
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Create account</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <View style={styles.card}>
+            <Text style={styles.title}>Create account</Text>
+            <Text style={styles.subtitle}>Join to start managing deliveries</Text>
 
-        {error ? <ErrorMessage message={error} /> : null}
+            {error ? <ErrorMessage message={error} /> : null}
 
-        <Input label="Full Name" value={form.name} onChangeText={(value: string) => handleChange('name', value)} placeholder="John Smith" error={validationErrors.name} />
-        <Input label="Email" value={form.email} onChangeText={(value: string) => handleChange('email', value)} placeholder="john@email.com" keyboardType="email-address" error={validationErrors.email} />
-        <Input label="Phone Number" value={form.phone} onChangeText={(value: string) => handleChange('phone', value)} placeholder="9876543210" keyboardType="phone-pad" error={validationErrors.phone} />
-        <Input label="Password" value={form.password} onChangeText={(value: string) => handleChange('password', value)} placeholder="••••••••" secureTextEntry error={validationErrors.password} />
-        <Input label="Confirm Password" value={form.confirmPassword} onChangeText={(value: string) => handleChange('confirmPassword', value)} placeholder="••••••••" secureTextEntry error={validationErrors.confirmPassword} />
+            <Input label="Full Name" value={form.name} onChangeText={(value: string) => handleChange('name', value)} placeholder="John Smith" icon="person-outline" error={touched ? validationErrors.name : ''} />
+            <Input label="Email" value={form.email} onChangeText={(value: string) => handleChange('email', value)} placeholder="john@email.com" keyboardType="email-address" icon="mail-outline" error={touched ? validationErrors.email : ''} />
+            <Input label="Phone Number" value={form.phone} onChangeText={(value: string) => handleChange('phone', value)} placeholder="9876543210" keyboardType="phone-pad" icon="call-outline" error={touched ? validationErrors.phone : ''} />
+            <Input label="Password" value={form.password} onChangeText={(value: string) => handleChange('password', value)} placeholder="••••••••" secureTextEntry icon="lock-closed-outline" error={touched ? validationErrors.password : ''} />
+            <Input label="Confirm Password" value={form.confirmPassword} onChangeText={(value: string) => handleChange('confirmPassword', value)} placeholder="••••••••" secureTextEntry icon="lock-closed-outline" error={touched ? validationErrors.confirmPassword : ''} />
 
-        <Button title="Register" onPress={handleSubmit} />
+            <Button title="Register" onPress={handleSubmit} loading={loading} style={styles.submitButton} />
 
-        <Text style={styles.footerText}>
-          Already registered? <Link href="/login" style={styles.link}>Login</Link>
-        </Text>
-      </View>
-    </ScrollView>
+            <Text style={styles.footerText}>
+              Already registered? <Link href="/login" style={styles.link}>Login</Link>
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#f8fafc' },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: '#e2e8f0' },
-  title: { fontSize: 28, fontWeight: '800', color: '#0f172a', marginBottom: 18 },
-  footerText: { marginTop: 18, textAlign: 'center', color: '#475569' },
-  link: { color: '#2563eb', fontWeight: '700' },
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  flex: { flex: 1 },
+  container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  card: { backgroundColor: COLORS.surface, borderRadius: 22, padding: 24, borderWidth: 1, borderColor: COLORS.border },
+  title: { fontSize: 26, fontWeight: '800', color: COLORS.text, marginBottom: 6 },
+  subtitle: { fontSize: 14, color: COLORS.textMuted, marginBottom: 20 },
+  submitButton: { marginTop: 4 },
+  footerText: { marginTop: 20, textAlign: 'center', color: COLORS.textMuted, fontSize: 13.5 },
+  link: { color: COLORS.primary, fontWeight: '700' },
 });
+

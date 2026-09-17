@@ -1,14 +1,23 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/common/Button';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
+import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { logoutUser, updateUserProfile } from '@/services/authService';
 import { validatePhone, validateRequired } from '@/utils/validation';
+
+const PROFILE_FIELDS: { key: 'email' | 'phone' | 'role'; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'email', label: 'Email', icon: 'mail-outline' },
+  { key: 'phone', label: 'Phone', icon: 'call-outline' },
+  { key: 'role', label: 'Role', icon: 'shield-checkmark-outline' },
+];
 
 export default function ProfileScreen() {
   const { profile, loading } = useAuth();
@@ -53,47 +62,97 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Profile</Text>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.heading}>Profile</Text>
 
-      {isEditing ? (
-        <View style={styles.card}>
-          {error ? <ErrorMessage message={error} /> : null}
-          <Input label="Name" value={name} onChangeText={setName} />
-          <Input label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <Button title="Save" onPress={handleSave} disabled={saving} />
-          <View style={styles.spacer} />
-          <Button title="Cancel" onPress={() => setIsEditing(false)} variant="secondary" />
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>{profile?.name ?? 'N/A'}</Text>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{profile?.email ?? 'N/A'}</Text>
-          <Text style={styles.label}>Phone</Text>
-          <Text style={styles.value}>{profile?.phone ?? 'N/A'}</Text>
-          <Text style={styles.label}>Role</Text>
-          <Text style={styles.value}>{profile?.role ?? 'admin'}</Text>
-        </View>
-      )}
+        {!isEditing ? (
+          <View style={styles.heroCard}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitial}>{(profile?.name ?? 'U').charAt(0).toUpperCase()}</Text>
+            </View>
+            <Text style={styles.heroName}>{profile?.name ?? 'N/A'}</Text>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>{(profile?.role ?? 'admin').toUpperCase()}</Text>
+            </View>
+          </View>
+        ) : null}
 
-      {!isEditing ? (
-        <>
-          <Button title="Edit Profile" onPress={startEditing} variant="secondary" />
-          <View style={styles.spacer} />
-          <Button title="Logout" onPress={handleLogout} variant="danger" />
-        </>
-      ) : null}
-    </View>
+        {isEditing ? (
+          <View style={styles.card}>
+            {error ? <ErrorMessage message={error} /> : null}
+            <Input label="Name" value={name} onChangeText={setName} icon="person-outline" />
+            <Input label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" icon="call-outline" />
+            <Button title="Save Changes" onPress={handleSave} loading={saving} style={styles.spacer} />
+            <Button title="Cancel" onPress={() => setIsEditing(false)} variant="secondary" />
+          </View>
+        ) : (
+          <View style={styles.card}>
+            {PROFILE_FIELDS.map((field) => (
+              <View key={field.key} style={styles.infoRow}>
+                <View style={styles.infoIconWrap}>
+                  <Ionicons name={field.icon} size={17} color={COLORS.primary} />
+                </View>
+                <View>
+                  <Text style={styles.label}>{field.label}</Text>
+                  <Text style={styles.value}>{profile?.[field.key] ?? 'N/A'}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {!isEditing ? (
+          <>
+            <Button title="Edit Profile" onPress={startEditing} variant="outline" icon="create-outline" style={styles.actionButton} />
+            <Button title="Logout" onPress={handleLogout} variant="danger" icon="log-out-outline" />
+          </>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
-  heading: { fontSize: 28, fontWeight: '800', color: '#0f172a', marginBottom: 18 },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 18 },
-  label: { color: '#64748b', fontSize: 12, marginTop: 10 },
-  value: { color: '#0f172a', fontSize: 18, fontWeight: '700', marginTop: 4 },
-  spacer: { height: 12 },
+  safeArea: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  content: { padding: 20, paddingBottom: 120 },
+  heading: { fontSize: 24, fontWeight: '800', color: COLORS.text, marginBottom: 18 },
+  heroCard: {
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 16,
+  },
+  avatarCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  avatarInitial: { color: '#fff', fontWeight: '800', fontSize: 26 },
+  heroName: { fontSize: 19, fontWeight: '800', color: COLORS.text },
+  roleBadge: { marginTop: 8, backgroundColor: COLORS.primaryLight, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
+  roleBadgeText: { color: COLORS.primary, fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  card: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: COLORS.border, marginBottom: 18 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 10 },
+  infoIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: { color: COLORS.textMuted, fontSize: 12 },
+  value: { color: COLORS.text, fontSize: 15.5, fontWeight: '700', marginTop: 2 },
+  spacer: { marginBottom: 12 },
+  actionButton: { marginBottom: 12 },
 });
+
