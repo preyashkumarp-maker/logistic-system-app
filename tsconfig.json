@@ -4,10 +4,16 @@
     "strict": true,
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "firebase/*": [
+        "./node_modules/firebase/*"
+      ],
+      "firebase": [
+        "./node_modules/firebase"
       ]
     }
   },

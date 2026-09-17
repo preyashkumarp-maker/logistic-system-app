@@ -32,6 +32,12 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Logistics Tracking System to use your location to track parcel deliveries in real time."
+        }
       ]
     ],
     "experiments": {
