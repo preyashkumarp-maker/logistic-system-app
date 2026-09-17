@@ -13,7 +13,7 @@ import {
     where
 } from 'firebase/firestore';
 
-import { db } from '@/firebase/config';
+import { auth, db } from '@/firebase/config';
 import { Parcel, ParcelStatus, ParcelTrackingEvent } from '@/types/parcel';
 import { generateTrackingNumber } from '@/utils/tracking';
 
@@ -39,6 +39,12 @@ export const createParcel = async (data: Partial<Parcel>) => {
   };
 
   const ref = await addDoc(collection(db, PARCELS), parcel as any);
+  // Seed the tracking timeline with the parcel's initial status.
+  await addParcelEvent(ref.id, {
+    status: parcel.status,
+    latitude: parcel.currentLocation?.latitude,
+    longitude: parcel.currentLocation?.longitude,
+  });
   return { id: ref.id, ...parcel } as Parcel;
 };
 
@@ -67,6 +73,15 @@ export const updateParcel = async (id: string, data: Partial<Parcel>) => {
     ...data,
     updatedAt: serverTimestamp(),
   });
+
+  // Record a tracking event whenever the status changes (drives the Tracking Timeline).
+  if (data.status) {
+    await addParcelEvent(id, {
+      status: data.status,
+      latitude: data.currentLocation?.latitude,
+      longitude: data.currentLocation?.longitude,
+    });
+  }
 };
 
 export const deleteParcel = async (id: string) => {
@@ -96,8 +111,13 @@ export const listenToParcel = (id: string, callback: (item: Parcel | null) => vo
   });
 
 export const addParcelEvent = async (parcelId: string, event: ParcelTrackingEvent) => {
+  if (!auth.currentUser) {
+    throw new Error('You must be signed in to update tracking.');
+  }
+
   await addDoc(collection(db, 'parcelTracking', parcelId, 'events'), {
     ...event,
+    updatedBy: event.updatedBy ?? auth.currentUser.uid,
     timestamp: serverTimestamp(),
   });
 };
