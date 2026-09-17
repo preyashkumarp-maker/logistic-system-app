@@ -16,13 +16,13 @@ export const createUserProfile = async (user: User, values: { name: string; emai
     updatedAt: new Date().toISOString(),
   };
 
-  await setDoc(doc(db, 'users', user.uid), profile, { merge: true });
+  await setDoc(doc(db, 'users', user.uid), profile);
   return profile;
 };
 
 export const getUserProfile = async (uid: string) => {
   const profileSnap = await getDoc(doc(db, 'users', uid));
-  return profileSnap.exists() ? ({ id: profileSnap.id, ...(profileSnap.data() as AppUserProfile) } as AppUserProfile) : null;
+  return profileSnap.exists() ? ({ ...(profileSnap.data() as Omit<AppUserProfile, 'id'>), id: profileSnap.id } as AppUserProfile) : null;
 };
 
 export const updateUserProfile = async (uid: string, values: { name?: string; phone?: string }) => {

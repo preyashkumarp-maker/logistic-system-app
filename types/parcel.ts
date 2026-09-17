@@ -35,6 +35,7 @@ export interface Parcel {
 }
 
 export interface ParcelTrackingEvent {
+  id?: string;
   status: ParcelStatus;
   latitude?: number;
   longitude?: number;

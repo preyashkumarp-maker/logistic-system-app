@@ -65,7 +65,7 @@ export default function LoginScreen() {
             <Button title="Login" onPress={handleSubmit} loading={loading} style={styles.submitButton} />
 
             <Text style={styles.footerText}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/register" style={styles.link}>Register</Link>
             </Text>
           </View>

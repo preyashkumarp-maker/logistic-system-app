@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -44,11 +44,8 @@ export default function DashboardScreen() {
   const { profile } = useAuth();
   const { parcels, loading } = useParcels();
   const { drivers } = useDrivers();
-  const [recentParcels, setRecentParcels] = useState<Parcel[]>([]);
 
-  useEffect(() => {
-    setRecentParcels(parcels.slice(0, 4));
-  }, [parcels]);
+  const recentParcels = useMemo(() => parcels.slice(0, 4), [parcels]);
 
   const stats = useMemo(() => buildStats(parcels, drivers.length), [parcels, drivers]);
 

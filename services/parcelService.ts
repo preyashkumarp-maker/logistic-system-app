@@ -107,7 +107,6 @@ export const getParcelEvents = async (parcelId: string): Promise<ParcelTrackingE
   const snapshot = await getDocs(q);
   return snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as Partial<ParcelTrackingEvent>;
-    delete data.id;
     return { id: docSnap.id, ...data } as ParcelTrackingEvent;
   });
 };
@@ -117,7 +116,6 @@ export const listenToParcelEvents = (parcelId: string, callback: (events: Parcel
     callback(
       snapshot.docs.map((docSnap) => {
         const data = docSnap.data() as Partial<ParcelTrackingEvent>;
-        delete data.id;
         return { id: docSnap.id, ...data } as ParcelTrackingEvent;
       }),
     );
