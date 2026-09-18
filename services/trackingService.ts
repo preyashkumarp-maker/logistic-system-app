@@ -1,83 +1,118 @@
 import * as Location from 'expo-location';
-import { doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
+import {
+  doc,
+  serverTimestamp,
+  updateDoc,
+} from 'firebase/firestore';
 
-import { APP_CONFIG } from '@/constants/config';
 import { db } from '@/firebase/config';
-import { setDriverLocation, updateDriverStatus } from '@/services/driverService';
-import { addParcelEvent } from '@/services/parcelService';
-import { ParcelLocation } from '@/types/parcel';
 
-export const listenToTrackingLocation = (parcelId: string, callback: (location: ParcelLocation | null) => void) =>
-  onSnapshot(doc(db, 'parcels', parcelId), (snapshot) => {
-    if (!snapshot.exists()) {
-      callback(null);
-      return;
-    }
-    const data = snapshot.data() as any;
-    callback(data.currentLocation ?? null);
-  });
+let locationSubscription: Location.LocationSubscription | null = null;
 
-export const updateParcelLocation = async (parcelId: string, location: ParcelLocation) => {
+export const startLiveTracking = async (
+  parcelId: string,
+  driverId: string,
+) => {
+  // Request location permission
+  const { status } =
+    await Location.requestForegroundPermissionsAsync();
+
+  if (status !== 'granted') {
+    throw new Error(
+      'Location permission is required to start live tracking.',
+    );
+  }
+
+  // Stop previous tracking if running
+  if (locationSubscription) {
+    locationSubscription.remove();
+    locationSubscription = null;
+  }
+
+  // Get current location immediately
+  const currentLocation =
+    await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+
+  await updateLocation(
+    parcelId,
+    driverId,
+    currentLocation.coords,
+  );
+
+  // Continue watching location
+  locationSubscription =
+    await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000,
+        distanceInterval: 10,
+      },
+      async (location) => {
+        try {
+          await updateLocation(
+            parcelId,
+            driverId,
+            location.coords,
+          );
+        } catch (error) {
+          console.error(
+            'Location update failed:',
+            error,
+          );
+        }
+      },
+    );
+};
+
+const updateLocation = async (
+  parcelId: string,
+  driverId: string,
+  coords: Location.LocationObjectCoords,
+) => {
+  const location = {
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    accuracy: coords.accuracy ?? undefined,
+    heading: coords.heading ?? undefined,
+    speed: coords.speed ?? undefined,
+  };
+
+  // Update parcel location
   await updateDoc(doc(db, 'parcels', parcelId), {
     currentLocation: location,
+    driverId,
+    updatedAt: serverTimestamp(),
+  });
+
+  // Update driver location
+  await updateDoc(doc(db, 'drivers', driverId), {
+    currentLocation: location,
+    status: 'ON_DELIVERY',
     updatedAt: serverTimestamp(),
   });
 };
 
-export const requestLocationPermission = async (): Promise<boolean> => {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  return status === 'granted';
-};
-
-let activeWatcher: Location.LocationSubscription | null = null;
-
-/**
- * Starts watching the device's GPS position and writes throttled updates to
- * both the parcel and driver documents. Uses a configurable time/distance
- * filter so it does not write on every GPS tick.
- */
-export const startLiveTracking = async (
-  parcelId: string,
-  driverId: string,
-  onUpdate?: (location: ParcelLocation) => void,
-): Promise<void> => {
-  const granted = await requestLocationPermission();
-  if (!granted) {
-    throw new Error('Location permission was denied. Enable it in device settings to start tracking.');
+export const stopLiveTracking = async (
+  driverId?: string,
+) => {
+  if (locationSubscription) {
+    locationSubscription.remove();
+    locationSubscription = null;
   }
 
-  stopLiveTracking();
-
-  activeWatcher = await Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.Balanced,
-      timeInterval: APP_CONFIG.trackingUpdateIntervalMs,
-      distanceInterval: APP_CONFIG.trackingDistanceFilter,
-    },
-    async (position) => {
-      const location: ParcelLocation = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy ?? undefined,
-        heading: position.coords.heading ?? undefined,
-        speed: position.coords.speed ?? undefined,
-        timestamp: new Date(position.timestamp).toISOString(),
-      };
-
-      await updateParcelLocation(parcelId, location);
-      await setDriverLocation(driverId, location);
-      onUpdate?.(location);
-    },
-  );
-};
-
-export const stopLiveTracking = async (driverId?: string): Promise<void> => {
-  activeWatcher?.remove();
-  activeWatcher = null;
   if (driverId) {
-    await updateDriverStatus(driverId, 'AVAILABLE');
+    try {
+      await updateDoc(doc(db, 'drivers', driverId), {
+        status: 'AVAILABLE',
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error(
+        'Unable to update driver status:',
+        error,
+      );
+    }
   }
 };
-
-export { addParcelEvent };
-

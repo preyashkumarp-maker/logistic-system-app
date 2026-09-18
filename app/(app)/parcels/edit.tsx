@@ -42,6 +42,6 @@ export default function EditParcelScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc', padding: 20 },
+  container: { flex: 1, backgroundColor: '#f8fafc', padding: 20, paddingBottom: 100, },
   title: { fontSize: 28, fontWeight: '800', color: '#0f172a', marginBottom: 18 },
 });

@@ -46,10 +46,20 @@ service cloud.firestore {
       }
     }
 
-    match /drivers/{driverId} {
-      allow read, write: if isSignedIn();
-    }
+   match /drivers/{driverId} {
+  allow read: if isSignedIn()
+    && resource.data.userId == request.auth.uid;
 
+  allow create: if isSignedIn()
+    && request.resource.data.userId == request.auth.uid;
+
+  allow update: if isSignedIn()
+    && resource.data.userId == request.auth.uid
+    && request.resource.data.userId == request.auth.uid;
+
+  allow delete: if isSignedIn()
+    && resource.data.userId == request.auth.uid;
+}
     match /{document=**} {
       allow read, write: if false;
     }

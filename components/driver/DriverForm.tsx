@@ -90,7 +90,7 @@ export function DriverForm({ initialValues, showStatus, submitLabel, onSubmit }:
 }
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 40 },
+  container: { paddingBottom: 40},
   sectionTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 8, marginBottom: 10 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: COLORS.border, backgroundColor: '#fff' },
