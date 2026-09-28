@@ -7,59 +7,90 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isDriver() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
+    }
+
+    function canAccessParcel(parcelId) {
+      return isAdmin()
+        || (isSignedIn() && (
+          get(/databases/$(database)/documents/parcels/$(parcelId)).data.userId == request.auth.uid
+          || (isDriver() && get(/databases/$(database)/documents/parcels/$(parcelId)).data.driverId == request.auth.uid)
+        ));
+    }
+
     match /users/{userId} {
-      allow read, write: if isSignedIn()
-        && request.auth.uid == userId;
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.role == 'user';
+      allow update: if isAdmin()
+        && resource.data.role != 'admin'
+        && request.resource.data.role in ['user', 'driver']
+        || (isSignedIn() && request.auth.uid == userId
+          && request.resource.data.role == resource.data.role);
     }
 
     match /parcels/{parcelId} {
-      allow read: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
+      allow read: if isAdmin()
+        || (isSignedIn() && (resource.data.userId == request.auth.uid
+          || (isDriver() && resource.data.driverId == request.auth.uid)));
 
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
 
-      allow update: if isSignedIn()
-        && resource.data.userId == request.auth.uid
-        && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin()
+        || (isDriver() && resource.data.driverId == request.auth.uid
+          && request.resource.data.userId == resource.data.userId
+          && request.resource.data.driverId == resource.data.driverId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'currentLocation', 'updatedAt']));
 
-      allow delete: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
 
       match /events/{eventId} {
-        allow read, write: if isSignedIn();
+        allow read: if canAccessParcel(parcelId);
+        allow create: if canAccessParcel(parcelId)
+          && request.resource.data.status is string
+          && request.resource.data.updatedBy == request.auth.uid;
+        allow update, delete: if false;
       }
     }
 
     match /parcelTracking/{parcelId} {
-      allow read: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
-
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-
-      allow update, delete: if isSignedIn()
-        && resource.data.userId == request.auth.uid;
+      allow read: if canAccessParcel(parcelId);
+      allow create: if canAccessParcel(parcelId)
+        && request.resource.data.status is string
+        && request.resource.data.updatedBy == request.auth.uid;
+      allow update, delete: if false;
 
       match /events/{eventId} {
-        allow read, write: if isSignedIn();
+        allow read: if canAccessParcel(parcelId);
+        allow create: if canAccessParcel(parcelId)
+          && request.resource.data.status is string
+          && request.resource.data.updatedBy == request.auth.uid;
+        allow update, delete: if false;
       }
     }
 
-   match /drivers/{driverId} {
-  allow read: if isSignedIn()
-    && resource.data.userId == request.auth.uid;
+    match /drivers/{driverId} {
+      allow read: if isAdmin()
+        || (isDriver() && resource.data.authUserId == request.auth.uid);
 
-  allow create: if isSignedIn()
-    && request.resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
 
-  allow update: if isSignedIn()
-    && resource.data.userId == request.auth.uid
-    && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin()
+        || (isDriver() && resource.data.authUserId == request.auth.uid
+          && request.resource.data.authUserId == resource.data.authUserId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['currentLocation', 'status', 'updatedAt']));
 
-  allow delete: if isSignedIn()
-    && resource.data.userId == request.auth.uid;
-}
+      allow delete: if isAdmin();
+    }
     match /{document=**} {
       allow read, write: if false;
     }

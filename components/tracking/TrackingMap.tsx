@@ -1,6 +1,6 @@
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 
 import { db } from '@/firebase/config';
@@ -82,19 +82,15 @@ export function TrackingMap({
     return unsubscribe;
   }, [parcel?.id]);
 
-  // If parent sends a new driver location, update it too
-  useEffect(() => {
-    if (initialDriverLocation) {
-      setDriverLocation(initialDriverLocation);
-    }
-  }, [initialDriverLocation]);
+  const centre = driverLocation ?? initialDriverLocation ?? parcel?.currentLocation;
 
-  const centre =
-    driverLocation ??
-    parcel?.currentLocation ?? {
-      latitude: 19.076,
-      longitude: 72.8777,
-    };
+  if (!centre || !Number.isFinite(centre.latitude) || !Number.isFinite(centre.longitude)) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>Live location is not available yet.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -115,9 +111,9 @@ export function TrackingMap({
         scrollEnabled
       >
         {/* LIVE DRIVER LOCATION */}
-        {driverLocation ? (
+        {(parcel ? driverLocation : initialDriverLocation ?? driverLocation) ? (
           <Marker
-            coordinate={driverLocation}
+            coordinate={parcel ? driverLocation! : (initialDriverLocation ?? driverLocation)!}
             title="Driver"
             description="Live driver location"
             pinColor="#2563eb"
@@ -144,6 +140,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
+  empty: {
+    height: 300,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: { color: '#64748b' },
 
   map: {
     width: '100%',

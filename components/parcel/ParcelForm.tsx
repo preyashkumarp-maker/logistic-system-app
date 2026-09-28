@@ -8,7 +8,7 @@ import { COLORS } from '@/constants/colors';
 import { PARCEL_STATUSES } from '@/constants/status';
 import { Driver } from '@/types/driver';
 import { Parcel, ParcelStatus } from '@/types/parcel';
-import { validateRequired } from '@/utils/validation';
+import { validatePhone, validateRequired, validateWeight } from '@/utils/validation';
 
 export interface ParcelFormValues {
   senderName: string;
@@ -53,8 +53,8 @@ export function ParcelForm({ initialValues, drivers = [], showStatusAndDriver, s
   const handleSubmit = async () => {
     const required: (keyof ParcelFormValues)[] = ['senderName', 'receiverName', 'pickupAddress', 'deliveryAddress', 'packageWeight'];
     const missing = required.find((field) => validateRequired(form[field] as string));
-    if (missing) {
-      setError('Please fill in all required fields.');
+    if (missing || validatePhone(form.senderPhone) || validatePhone(form.receiverPhone) || validateWeight(form.packageWeight)) {
+      setError(missing ? 'Please fill in all required fields.' : 'Enter valid phone numbers and a positive package weight.');
       return;
     }
 
@@ -113,10 +113,10 @@ export function ParcelForm({ initialValues, drivers = [], showStatusAndDriver, s
             {drivers.map((driver) => (
               <Pressable
                 key={driver.id}
-                onPress={() => setForm((prev) => ({ ...prev, driverId: driver.id }))}
-                style={[styles.chip, form.driverId === driver.id && styles.chipActive]}
+                onPress={() => setForm((prev) => ({ ...prev, driverId: driver.authUserId ?? driver.id }))}
+                style={[styles.chip, form.driverId === (driver.authUserId ?? driver.id) && styles.chipActive]}
               >
-                <Text style={[styles.chipText, form.driverId === driver.id && styles.chipTextActive]}>{driver.name}</Text>
+                <Text style={[styles.chipText, form.driverId === (driver.authUserId ?? driver.id) && styles.chipTextActive]}>{driver.name}</Text>
               </Pressable>
             ))}
           </View>

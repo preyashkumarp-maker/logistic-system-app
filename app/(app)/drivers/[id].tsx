@@ -8,6 +8,7 @@ import { Loading } from '@/components/common/Loading';
 import { TrackingMap } from '@/components/tracking/TrackingMap';
 import { COLORS } from '@/constants/colors';
 import { DRIVER_STATUS_COLORS } from '@/constants/status';
+import { useAuth } from '@/hooks/useAuth';
 import { deleteDriver, listenToDrivers } from '@/services/driverService';
 import { Driver } from '@/types/driver';
 import { formatDateTime } from '@/utils/date';
@@ -16,14 +17,15 @@ import { formatLocation } from '@/utils/tracking';
 export default function DriverDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [driver, setDriver] = useState<Driver | null | undefined>(undefined);
+  const { profile } = useAuth();
 
   useEffect(() => {
-    if (!id) return;
-    const unsubscribe = listenToDrivers((items) => {
+    if (!id || !profile) return;
+    const unsubscribe = listenToDrivers(profile.role, profile.id, (items) => {
       setDriver(items.find((item) => item.id === id) ?? null);
     });
     return () => unsubscribe();
-  }, [id]);
+  }, [id, profile]);
 
   if (driver === undefined) return <Loading label="Loading driver" />;
   if (driver === null) return <EmptyState title="Driver not found" message="This driver may have been removed." />;
@@ -73,10 +75,10 @@ export default function DriverDetailsScreen() {
       </View>
 
       <View style={styles.actions}>
-        <Link href={{ pathname: '/drivers/edit', params: { id: driver.id } }} asChild>
+        {profile?.role === 'admin' ? <Link href={{ pathname: '/drivers/edit', params: { id: driver.id } }} asChild>
           <Button title="Edit Driver" onPress={() => undefined} variant="secondary" />
-        </Link>
-        <Button title="Delete Driver" onPress={handleDelete} variant="danger" style={styles.spacedButton} />
+        </Link> : null}
+        {profile?.role === 'admin' ? <Button title="Delete Driver" onPress={handleDelete} variant="danger" style={styles.spacedButton} /> : null}
       </View>
     </ScrollView>
   );

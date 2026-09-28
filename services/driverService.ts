@@ -1,19 +1,21 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 
 import { auth, db } from '@/firebase/config';
+import { UserRole } from '@/types/auth';
 import { Driver, DriverStatus } from '@/types/driver';
 
 const DRIVERS = 'drivers';
@@ -32,6 +34,7 @@ export const createDriver = async (data: Partial<Driver>) => {
   const user = getCurrentUser();
 
   const driver: Omit<Driver, 'id'> & { userId: string } = {
+    authUserId: data.authUserId,
     name: data.name ?? '',
     phone: data.phone ?? '',
     email: data.email ?? '',
@@ -44,7 +47,13 @@ export const createDriver = async (data: Partial<Driver>) => {
     updatedAt: serverTimestamp() as any,
   };
 
-  const ref = await addDoc(collection(db, DRIVERS), driver);
+  const ref = data.authUserId
+    ? doc(db, DRIVERS, data.authUserId)
+    : await addDoc(collection(db, DRIVERS), driver);
+
+  if (data.authUserId) {
+    await setDoc(ref, driver);
+  }
 
   return { id: ref.id, ...driver } as Driver;
 };
@@ -111,7 +120,10 @@ export const deleteDriver = async (id: string) => {
 };
 
 export const listenToDrivers = (
+  role: UserRole,
+  uid: string,
   callback: (items: Driver[]) => void,
+  onError?: (error: Error) => void,
 ) => {
   const user = auth.currentUser;
 
@@ -120,11 +132,9 @@ export const listenToDrivers = (
     return () => {};
   }
 
-  const q = query(
-    collection(db, DRIVERS),
-    where('userId', '==', user.uid),
-    orderBy('createdAt', 'desc'),
-  );
+  const q = role === 'admin'
+    ? query(collection(db, DRIVERS), orderBy('createdAt', 'desc'))
+    : query(collection(db, DRIVERS), where('authUserId', '==', uid), orderBy('createdAt', 'desc'));
 
   return onSnapshot(
     q,
@@ -143,6 +153,7 @@ export const listenToDrivers = (
     },
     (error) => {
       console.error('Driver listener error:', error);
+      onError?.(error);
       callback([]);
     },
   );

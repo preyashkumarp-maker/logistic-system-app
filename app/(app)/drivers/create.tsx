@@ -1,14 +1,18 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { DriverForm, DriverFormValues } from '@/components/driver/DriverForm';
+import { useAuth } from '@/hooks/useAuth';
 import { createDriver } from '@/services/driverService';
 
 export default function CreateDriverScreen() {
+  const { profile } = useAuth();
   const handleSubmit = async (values: DriverFormValues) => {
     await createDriver({ ...values, status: 'AVAILABLE' });
     router.back();
   };
+
+  if (profile?.role !== 'admin') return <Redirect href="/dashboard" />;
 
   return (
     <View style={styles.container}>

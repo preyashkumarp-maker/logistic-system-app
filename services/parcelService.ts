@@ -1,19 +1,20 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 
 import { auth, db } from '@/firebase/config';
+import { UserRole } from '@/types/auth';
 import { Parcel, ParcelStatus, ParcelTrackingEvent } from '@/types/parcel';
 import { generateTrackingNumber } from '@/utils/tracking';
 
@@ -55,11 +56,17 @@ export const createParcel = async (data: Partial<Parcel>) => {
 
   const ref = await addDoc(collection(db, PARCELS), parcel);
 
-  await addParcelEvent(ref.id, {
-    status: parcel.status,
-    latitude: parcel.currentLocation?.latitude,
-    longitude: parcel.currentLocation?.longitude,
-  });
+  try {
+    await addParcelEvent(ref.id, {
+      status: parcel.status,
+      latitude: parcel.currentLocation?.latitude,
+      longitude: parcel.currentLocation?.longitude,
+      updatedBy: user.uid,
+    });
+  } catch (eventError) {
+    // Keep the parcel visible even if a separately-written timeline event is rejected.
+    console.error('Parcel created but initial tracking event failed:', eventError);
+  }
 
   return { id: ref.id, ...parcel } as Parcel;
 };
@@ -123,6 +130,7 @@ export const updateParcel = async (
       status: data.status,
       latitude: data.currentLocation?.latitude,
       longitude: data.currentLocation?.longitude,
+      updatedBy: auth.currentUser?.uid,
     });
   }
 };
@@ -134,7 +142,10 @@ export const deleteParcel = async (id: string) => {
 };
 
 export const listenToParcels = (
+  role: UserRole,
+  uid: string,
   callback: (items: Parcel[]) => void,
+  onError?: (error: Error) => void,
 ) => {
   const user = auth.currentUser;
 
@@ -143,11 +154,11 @@ export const listenToParcels = (
     return () => {};
   }
 
-  const q = query(
-    collection(db, PARCELS),
-    where('userId', '==', user.uid),
-    orderBy('createdAt', 'desc'),
-  );
+  const q = role === 'admin'
+    ? query(collection(db, PARCELS), orderBy('createdAt', 'desc'))
+    : role === 'driver'
+      ? query(collection(db, PARCELS), where('driverId', '==', uid), orderBy('createdAt', 'desc'))
+      : query(collection(db, PARCELS), where('userId', '==', uid), orderBy('createdAt', 'desc'));
 
   return onSnapshot(
     q,
@@ -166,6 +177,7 @@ export const listenToParcels = (
     },
     (error) => {
       console.error('Parcel listener error:', error);
+      onError?.(error);
       callback([]);
     },
   );
@@ -174,6 +186,7 @@ export const listenToParcels = (
 export const listenToParcel = (
   id: string,
   callback: (item: Parcel | null) => void,
+  onError?: (error: Error) => void,
 ) => {
   getCurrentUser();
 
@@ -195,6 +208,7 @@ export const listenToParcel = (
     },
     (error) => {
       console.error('Parcel listener error:', error);
+      onError?.(error);
       callback(null);
     },
   );
@@ -241,6 +255,7 @@ export const getParcelEvents = async (
 export const listenToParcelEvents = (
   parcelId: string,
   callback: (events: ParcelTrackingEvent[]) => void,
+  onError?: (error: Error) => void,
 ) => {
   getCurrentUser();
 
@@ -266,6 +281,7 @@ export const listenToParcelEvents = (
     },
     (error) => {
       console.error('Tracking listener error:', error);
+      onError?.(error);
       callback([]);
     },
   );
@@ -320,15 +336,5 @@ export const updateParcelStatus = async (
     updatedAt: serverTimestamp(),
   });
 
-  if (
-    latitude !== undefined &&
-    longitude !== undefined
-  ) {
-    await addParcelEvent(id, {
-      status,
-      latitude,
-      longitude,
-      updatedBy,
-    });
-  }
+  await addParcelEvent(id, { status, latitude, longitude, updatedBy });
 };

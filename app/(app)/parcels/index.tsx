@@ -6,16 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/common/Button';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Loading } from '@/components/common/Loading';
 import { ParcelCard } from '@/components/parcel/ParcelCard';
 import { COLORS } from '@/constants/colors';
 import { PARCEL_STATUSES } from '@/constants/status';
+import { useAuth } from '@/hooks/useAuth';
 import { useParcels } from '@/hooks/useParcels';
 
 const STATUS_FILTERS = ['ALL', ...PARCEL_STATUSES];
 
 export default function ParcelsScreen() {
-  const { parcels, loading } = useParcels();
+  const { parcels, loading, error } = useParcels();
+  const { profile } = useAuth();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('ALL');
   const [refreshing, setRefreshing] = useState(false);
@@ -43,10 +46,12 @@ export default function ParcelsScreen() {
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Parcels</Text>
-          <Link href="/parcels/create" asChild>
+          {profile?.role === 'admin' ? <Link href="/parcels/create" asChild>
             <Button title="New" icon="add" size="sm" onPress={() => undefined} />
-          </Link>
+          </Link> : null}
         </View>
+
+        {error ? <ErrorMessage message={error} /> : null}
 
         <View style={styles.searchWrap}>
           <Ionicons name="search-outline" size={18} color={COLORS.textSubtle} style={styles.searchIcon} />

@@ -47,7 +47,7 @@ export default function DashboardScreen() {
 
   const recentParcels = useMemo(() => parcels.slice(0, 4), [parcels]);
 
-  const stats = useMemo(() => buildStats(parcels, drivers.length), [parcels, drivers]);
+  const stats = useMemo(() => buildStats(parcels, profile?.role === 'admin' ? drivers.length : 0), [parcels, drivers, profile?.role]);
 
   if (loading) return <Loading label="Loading dashboard" />;
 
@@ -65,7 +65,7 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.grid}>
-          {STAT_CARDS.map((stat) => (
+          {STAT_CARDS.filter((stat) => profile?.role === 'admin' || !['drivers', 'pending', 'inTransit', 'outForDelivery'].includes(stat.key)).map((stat) => (
             <View key={stat.key} style={styles.card}>
               <View style={[styles.cardIconWrap, { backgroundColor: `${stat.color}1a` }]}>
                 <Ionicons name={stat.icon} size={18} color={stat.color} />
@@ -77,22 +77,22 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.actionsRow}>
-          <Link href="/parcels/create" asChild>
+          {profile?.role === 'admin' ? <Link href="/parcels/create" asChild>
             <Pressable style={styles.quickAction}>
               <View style={[styles.quickIconWrap, { backgroundColor: COLORS.primaryLight }]}>
                 <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
               </View>
               <Text style={styles.quickActionText}>Create Parcel</Text>
             </Pressable>
-          </Link>
-          <Link href="/drivers/create" asChild>
+          </Link> : null}
+          {profile?.role === 'admin' ? <Link href="/drivers/create" asChild>
             <Pressable style={styles.quickAction}>
               <View style={[styles.quickIconWrap, { backgroundColor: COLORS.successLight }]}>
                 <Ionicons name="person-add-outline" size={20} color={COLORS.success} />
               </View>
               <Text style={styles.quickActionText}>Add Driver</Text>
             </Pressable>
-          </Link>
+          </Link> : null}
           <Link href="/parcels" asChild>
             <Pressable style={styles.quickAction}>
               <View style={[styles.quickIconWrap, { backgroundColor: COLORS.infoLight }]}>

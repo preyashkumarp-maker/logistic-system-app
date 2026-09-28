@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useSegments } from 'expo-router';
 import { BottomTabBarProps, Tabs } from 'expo-router/js-tabs';
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Loading } from '@/components/common/Loading';
 import { COLORS } from '@/constants/colors';
 import { useAuth } from '@/hooks/useAuth';
 import { logoutUser } from '@/services/authService';
+import { canAccessRoute } from '@/utils/authorization';
 
 const TAB_ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
   dashboard: { active: 'grid', inactive: 'grid-outline' },
@@ -125,10 +127,15 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 }
 
 export default function AppLayout() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, error } = useAuth();
+  const segments = useSegments();
+  const routeName = segments[1] ?? 'dashboard';
 
   if (loading) return <Loading label="Checking session" />;
   if (!user) return <Redirect href="/login" />;
+  if (error) return <ErrorMessage message={error} />;
+  if (!profile) return <Loading label="Loading profile" />;
+  if (!canAccessRoute(profile.role, routeName)) return <Redirect href="/dashboard" />;
 
   return (
     <Tabs
@@ -137,7 +144,8 @@ export default function AppLayout() {
     >
       <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
       <Tabs.Screen name="parcels" options={{ title: 'Parcels' }} />
-      <Tabs.Screen name="drivers" options={{ title: 'Drivers' }} />
+      {profile.role === 'admin' ? <Tabs.Screen name="drivers" options={{ title: 'Drivers' }} /> : null}
+      {profile.role === 'admin' ? <Tabs.Screen name="users" options={{ title: 'Users' }} /> : null}
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );

@@ -2,6 +2,7 @@ export type DriverStatus = 'AVAILABLE' | 'ON_DELIVERY' | 'OFFLINE';
 
 export interface Driver {
   id: string;
+  authUserId?: string;
   name: string;
   phone: string;
   email: string;

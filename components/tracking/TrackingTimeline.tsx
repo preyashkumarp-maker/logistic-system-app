@@ -16,7 +16,7 @@ export function TrackingTimeline({ events }: { events: ParcelTrackingEvent[] }) 
           <View style={styles.content}>
             <Text style={styles.status}>{event.status}</Text>
             <Text style={styles.time}>{formatDateTime(event.timestamp)}</Text>
-            {event.latitude && event.longitude ? (
+            {event.latitude !== undefined && event.longitude !== undefined ? (
               <Text style={styles.coords}>{event.latitude.toFixed(5)}, {event.longitude.toFixed(5)}</Text>
             ) : null}
           </View>

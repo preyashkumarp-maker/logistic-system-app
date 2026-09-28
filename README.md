@@ -10,7 +10,7 @@ A production-ready MVP mobile app for parcel/logistics management, built with **
 
 Logistics Tracking System lets a dispatcher/admin:
 
-- Sign up / log in with Firebase Authentication.
+- Register as a customer or log in with Firebase Authentication. Public registration always creates the `user` role; administrators promote accounts to `driver` through the Users screen.
 - Create, view, search, filter, edit, and delete **parcels**.
 - Create, view, edit, and delete **drivers**, and assign a driver to a parcel.
 - Track a parcel live on a map, powered by GPS updates written to Firestore.
@@ -98,10 +98,11 @@ Driver statuses: `AVAILABLE`, `ON_DELIVERY`, `OFFLINE`.
 
 See [`firestore.rules`](./firestore.rules) for the full rules. Summary:
 
-- Any signed-in user can **read** `parcels` and `drivers` (dashboard/list access).
-- Only users with `role: "admin"` (in their `users/{uid}` document) can **create/update/delete** parcels and drivers.
-- A **driver** account (where `drivers/{uid}` doc id equals their auth uid) may update **only** the `currentLocation`, `status`, and `updatedAt` fields — and only on their own driver document, or on a parcel where `driverId == request.auth.uid`. This is what powers self-service live location updates without letting drivers edit arbitrary logistics data.
-- Users can read/update only their own `users/{uid}` profile; admins can manage any profile.
+- Administrators can read and manage all parcels, drivers, and user profiles.
+- Customers can read only their own profile and parcels.
+- Drivers can read only assigned parcels and their own driver profile, and can update only assigned parcel status/location or their own driver status/location.
+- Tracking history is readable by authorized parcel participants and append-only; clients cannot update or delete events.
+- Public registration creates only `role: "user"`; the rules reject client attempts to create another role.
 
 Deploy the rules with the Firebase CLI:
 
@@ -127,6 +128,7 @@ app/
 └── (app)/                  # Protected tab routes
     ├── dashboard.tsx
     ├── profile.tsx
+    ├── users.tsx                # Admin-only role management
     ├── parcels/{index,create,[id],edit}.tsx
     ├── drivers/{index,create,[id],edit}.tsx
     └── tracking/[id].tsx

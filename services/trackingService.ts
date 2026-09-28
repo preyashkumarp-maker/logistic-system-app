@@ -1,11 +1,15 @@
 import * as Location from 'expo-location';
 import {
-  doc,
-  serverTimestamp,
-  updateDoc,
+    doc,
+    onSnapshot,
+    serverTimestamp,
+    updateDoc,
+    writeBatch,
 } from 'firebase/firestore';
 
+import { APP_CONFIG } from '@/constants/config';
 import { db } from '@/firebase/config';
+import { ParcelLocation } from '@/types/parcel';
 
 let locationSubscription: Location.LocationSubscription | null = null;
 
@@ -46,8 +50,8 @@ export const startLiveTracking = async (
     await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High,
-        timeInterval: 5000,
-        distanceInterval: 10,
+        timeInterval: APP_CONFIG.trackingUpdateIntervalMs,
+        distanceInterval: APP_CONFIG.trackingDistanceFilter,
       },
       async (location) => {
         try {
@@ -80,18 +84,20 @@ const updateLocation = async (
   };
 
   // Update parcel location
-  await updateDoc(doc(db, 'parcels', parcelId), {
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'parcels', parcelId), {
     currentLocation: location,
     driverId,
     updatedAt: serverTimestamp(),
   });
 
   // Update driver location
-  await updateDoc(doc(db, 'drivers', driverId), {
+  batch.update(doc(db, 'drivers', driverId), {
     currentLocation: location,
     status: 'ON_DELIVERY',
     updatedAt: serverTimestamp(),
   });
+  await batch.commit();
 };
 
 export const stopLiveTracking = async (
@@ -115,4 +121,18 @@ export const stopLiveTracking = async (
       );
     }
   }
+};
+
+export const listenToTrackingLocation = (
+  parcelId: string,
+  callback: (location: ParcelLocation | null) => void,
+) => {
+  return onSnapshot(
+    doc(db, 'parcels', parcelId),
+    (snapshot) => {
+      const location = snapshot.data()?.currentLocation as ParcelLocation | undefined;
+      callback(location ?? null);
+    },
+    () => callback(null),
+  );
 };

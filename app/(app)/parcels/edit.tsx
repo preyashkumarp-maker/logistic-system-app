@@ -1,16 +1,18 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { Loading } from '@/components/common/Loading';
 import { ParcelForm, ParcelFormValues } from '@/components/parcel/ParcelForm';
+import { useAuth } from '@/hooks/useAuth';
 import { useDrivers } from '@/hooks/useDrivers';
 import { getParcelById, updateParcel } from '@/services/parcelService';
 import { Parcel } from '@/types/parcel';
 
 export default function EditParcelScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile } = useAuth();
   const { drivers } = useDrivers();
   const [parcel, setParcel] = useState<Parcel | null | undefined>(undefined);
 
@@ -19,6 +21,7 @@ export default function EditParcelScreen() {
     getParcelById(id).then(setParcel);
   }, [id]);
 
+  if (profile?.role !== 'admin') return <Redirect href="/parcels" />;
   if (parcel === undefined) return <Loading label="Loading parcel" />;
   if (parcel === null) return <EmptyState title="Parcel not found" message="This parcel may have been deleted." />;
 

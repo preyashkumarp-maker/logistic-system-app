@@ -1,15 +1,17 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '@/components/common/EmptyState';
 import { Loading } from '@/components/common/Loading';
 import { DriverForm, DriverFormValues } from '@/components/driver/DriverForm';
+import { useAuth } from '@/hooks/useAuth';
 import { getDriverById, updateDriver } from '@/services/driverService';
 import { Driver } from '@/types/driver';
 
 export default function EditDriverScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { profile } = useAuth();
   const [driver, setDriver] = useState<Driver | null | undefined>(undefined);
 
   useEffect(() => {
@@ -17,6 +19,7 @@ export default function EditDriverScreen() {
     getDriverById(id).then(setDriver);
   }, [id]);
 
+  if (profile?.role !== 'admin') return <Redirect href="/dashboard" />;
   if (driver === undefined) return <Loading label="Loading driver" />;
   if (driver === null) return <EmptyState title="Driver not found" message="This driver may have been removed." />;
 

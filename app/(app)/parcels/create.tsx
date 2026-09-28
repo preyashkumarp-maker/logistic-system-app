@@ -1,14 +1,18 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ParcelForm, ParcelFormValues } from '@/components/parcel/ParcelForm';
+import { useAuth } from '@/hooks/useAuth';
 import { createParcel } from '@/services/parcelService';
 
 export default function CreateParcelScreen() {
+  const { profile } = useAuth();
   const handleSubmit = async (values: ParcelFormValues) => {
     await createParcel({ ...values, status: 'CREATED' });
     router.back();
   };
+
+  if (profile?.role !== 'admin') return <Redirect href="/parcels" />;
 
   return (
     <View style={styles.container}>

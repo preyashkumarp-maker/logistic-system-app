@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { Loading } from '@/components/common/Loading';
 import { ParcelStatusBadge } from '@/components/parcel/ParcelStatusBadge';
 import { COLORS } from '@/constants/colors';
+import { useAuth } from '@/hooks/useAuth';
 import { useDrivers } from '@/hooks/useDrivers';
 import { deleteParcel, listenToParcel } from '@/services/parcelService';
 import { Parcel } from '@/types/parcel';
@@ -16,6 +17,7 @@ import { formatLocation } from '@/utils/tracking';
 export default function ParcelDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { drivers } = useDrivers();
+  const { profile } = useAuth();
   const [parcel, setParcel] = useState<Parcel | null | undefined>(undefined);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export default function ParcelDetailsScreen() {
   if (parcel === undefined) return <Loading label="Loading parcel" />;
   if (parcel === null) return <EmptyState title="Parcel not found" message="This parcel may have been deleted." />;
 
-  const driver = drivers.find((item) => item.id === parcel.driverId);
+  const driver = drivers.find((item) => item.id === parcel.driverId || item.authUserId === parcel.driverId);
 
   const handleDelete = () => {
     Alert.alert('Delete Parcel', `Are you sure you want to delete ${parcel.trackingNumber}? This cannot be undone.`, [
@@ -74,10 +76,10 @@ export default function ParcelDetailsScreen() {
         <Link href={{ pathname: '/tracking/[id]', params: { id: parcel.id } }} asChild>
           <Button title="Track Parcel" onPress={() => undefined} />
         </Link>
-        <Link href={{ pathname: '/parcels/edit', params: { id: parcel.id } }} asChild>
+        {profile?.role === 'admin' ? <Link href={{ pathname: '/parcels/edit', params: { id: parcel.id } }} asChild>
           <Button title="Edit Parcel" onPress={() => undefined} variant="secondary" style={styles.spacedButton} />
-        </Link>
-        <Button title="Delete Parcel" onPress={handleDelete} variant="danger" style={styles.spacedButton} />
+        </Link> : null}
+        {profile?.role === 'admin' ? <Button title="Delete Parcel" onPress={handleDelete} variant="danger" style={styles.spacedButton} /> : null}
       </View>
     </ScrollView>
   );

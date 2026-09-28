@@ -17,6 +17,11 @@ export const validatePhone = (value?: string) => {
   return value.replace(/\D/g, '').length >= 10 ? '' : 'Enter a valid phone number';
 };
 
+export const validateWeight = (value: string) => {
+  const weight = Number.parseFloat(value.replace(',', '.').replace(/[^0-9.]/g, ''));
+  return Number.isFinite(weight) && weight > 0 ? '' : 'Enter a valid positive weight';
+};
+
 export const validateConfirmPassword = (password: string, confirmPassword: string) => {
   if (!confirmPassword) return 'Confirm password is required';
   return password === confirmPassword ? '' : 'Passwords do not match';
